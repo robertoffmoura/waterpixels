@@ -5,17 +5,9 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-using namespace std;
 
+typedef std::pair<int, int> pi;
 #include <opencv2/opencv.hpp>
-
-#include <unordered_set>
-typedef pair<int, int> pi;
-struct pair_hash {
-    inline std::size_t operator()(const std::pair<int,int> & v) const {
-        return v.first*31+v.second;
-    }
-};
 
 class Waterpixels {
 public:
@@ -42,20 +34,6 @@ public:
 		// const unsigned int&			color );
 		cv::Vec3b color = cv::Vec3b(0xff,0xff,0xff));
 
-	//============================================================================
-	// Returns the distribution of distances from every ground truth border pixel
-	// to the closes superpixel segmentation border pixel.
-	//============================================================================
-	unordered_map<int, int> getDistanceDistributionOfGroundTruthToSegmentation(int*& labels, int*& ground_truth_labels);
-	//============================================================================
-	// Returns the count of pixels which are in a border between two labels divided
-	// by the total pixel count.
-	//============================================================================
-	double GetContourDensity(int*& labels);
-	// Returns the average mismatch factor (its computation is specified in the
-	// waterpixel article).
-	double GetAverageMismatchFactor(int*& labels, int numlabels);
-
 private:
 	// Populate the |markers| array with the indices of pixels which are centered
 	// in a hexagonal grid. update |markerSize| to the count of markers. One pixel
@@ -76,22 +54,11 @@ private:
 	// |s| is on a border. |numneighbors| reflects how many neighbors there are
 	// in fact.
 	void get8Neighbors(int s, int& numneighbors, int* neighbors);
-	// Whether the pixel coordinates fall inside the boundaries of the image's
-	// width and height.
-	bool valid(int i, int j);
-	// Returns the distance from the pixel index |p| to the closest superpixel
-	// segmentation border pixel. |isContour| is true for those pixels.
-	int getDistanceToLabel(int p, vector<bool> isContour);
-	// Returns whether the pixel at |mainindex|, whose coordinates are (i,j),
-	// belongs to a border of a label in |labels|.
-	bool belongsToBorder(int mainindex, int i, int j, int*& labels);
-	// Returns the average superpixel.
-	unordered_set<pi, pair_hash> averageSuperpixel(int*& labels, int numlabels);
 
-	int		width;
-	int		height;
-	int		size;
-	int		m_depth;
+	int	width;
+	int	height;
+	int	size;
+	int	m_depth;
 };
 
 #endif // !defined(_Waterpixels_H_INCLUDED_)

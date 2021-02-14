@@ -1,4 +1,5 @@
 #include "waterpixels.h"
+#include "metricsLibrary.h"
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
@@ -9,12 +10,12 @@ namespace fs = std::filesystem;
 
 using namespace cv;
 
-vector<string> getFileNames(const char* path) {
-	vector<string> segmentation_file_names;
+std::vector<std::string> getFileNames(const char* path) {
+	std::vector<std::string> segmentation_file_names;
 	DIR *dir; struct dirent *diread;
 	if ((dir = opendir(path)) != nullptr) {
 		while ((diread = readdir(dir)) != nullptr) {
-			string file_name = string(diread->d_name);
+			std::string file_name = std::string(diread->d_name);
 			if (file_name.compare(".") == 0 || file_name.compare("..") == 0 || file_name.compare(".DS_Store") == 0) {
 				continue;
 			}
@@ -25,9 +26,9 @@ vector<string> getFileNames(const char* path) {
 	return segmentation_file_names;
 }
 
-int* getGroundTruthLabels(int size, int width, string file_path) {
+int* getGroundTruthLabels(int size, int width, std::string file_path) {
 	int* ground_truth_labels = new int[size];
-	ifstream image_segmentation_file;
+	std::ifstream image_segmentation_file;
 	image_segmentation_file.open(file_path);
 	char data[200];
 	while (image_segmentation_file >> data) {
@@ -43,8 +44,8 @@ int* getGroundTruthLabels(int size, int width, string file_path) {
 	return ground_truth_labels;
 }
 
-void writeUnorderedMapToFile(unordered_map<int, int> mapToSave, string fileNameToSaveMap) {
-	ofstream file;
+void writeUnorderedMapToFile(std::unordered_map<int, int> mapToSave, std::string fileNameToSaveMap) {
+	std::ofstream file;
 	file.open(fileNameToSaveMap);
 	for (const auto& d: mapToSave) {
 		file << d.first << " " << d.second << std::endl;
@@ -52,31 +53,31 @@ void writeUnorderedMapToFile(unordered_map<int, int> mapToSave, string fileNameT
 	file.close();
 }
 
-void writeStringToFile(string str, string fileName) {
-	ofstream file;
+void writeStringToFile(std::string str, std::string fileName) {
+	std::ofstream file;
 	file.open(fileName);
 	file << str << std::endl;
 	file.close();
 }
 
-void appendStringToFile(string stringToAppend, string fileName) {
-	ofstream file;
-	file.open(fileName, fstream::app);
+void appendStringToFile(std::string stringToAppend, std::string fileName) {
+	std::ofstream file;
+	file.open(fileName, std::fstream::app);
 	file << stringToAppend << std::endl;
 	file.close();
 }
 
 void computeAndWriteRegularityMeasures(int* ks, int kCount) {
-	string path_string = "images/";
+	std::string path_string = "images/";
 	const char* path = path_string.c_str();
-	vector<string> image_file_names = getFileNames(path);
+	std::vector<std::string> image_file_names = getFileNames(path);
 	std::cout << "Computing regularity measures (contour density and average mismatch factor) and writing the results to results/measures/" << std::endl;
 	int file_count = image_file_names.size();
 	int file_index = 1;
 	for (auto file_name : image_file_names) {
 		// Write the header of measures.csv
-		string measuresFileName = "results/measures/" + file_name.substr(0, file_name.size() - 4) + ".csv";
-		string header = "measure,k,value";
+		std::string measuresFileName = "results/measures/" + file_name.substr(0, file_name.size() - 4) + ".csv";
+		std::string header = "measure,k,value";
 		writeStringToFile(header, measuresFileName);
 
 		for (int i_k=0; i_k<kCount; i_k++) {
@@ -89,19 +90,20 @@ void computeAndWriteRegularityMeasures(int* ks, int kCount) {
 			int height = img.rows;
 			int size = width * height;
 			int* labels = new int[size];
+			MetricsLibrary metrics = MetricsLibrary(height, width);
 
 			waterpixels.DoSuperpixelSegmentation_ForGivenNumberOfSuperpixels(img, width, height, labels, numlabels, k);
 
 			// Save contour density
-			double contourDensity = waterpixels.GetContourDensity(labels);
+			double contourDensity = metrics.GetContourDensity(labels);
 			// string measuresFileName = "results/" + to_string(user) + "/" + file_name.substr(0, file_name.size() - 4) + "_measures.csv";
-			string contourDensityLine = "contourDensity, " + to_string(k) + ", " + to_string(contourDensity);
+			std::string contourDensityLine = "contourDensity, " + std::to_string(k) + ", " + std::to_string(contourDensity);
 			appendStringToFile(contourDensityLine, measuresFileName);
 
 			// Save average mismatch factor
-			double avgMismatchFactor = waterpixels.GetAverageMismatchFactor(labels, numlabels);
+			double avgMismatchFactor = metrics.GetAverageMismatchFactor(labels, numlabels);
 			// string measuresFileName = "results/" + to_string(user) + "/" + file_name.substr(0, file_name.size() - 4) + "_measures.csv";
-			string avgMismatchFactorLine = "avgMismatchFactor, " + to_string(k) + ", " + to_string(avgMismatchFactor);
+			std::string avgMismatchFactorLine = "avgMismatchFactor, " + std::to_string(k) + ", " + std::to_string(avgMismatchFactor);
 			appendStringToFile(avgMismatchFactorLine, measuresFileName);
 		}
 		std::cout << "(" << file_index++ << "/" << file_count << ") Done. " << measuresFileName << std::endl;
@@ -119,9 +121,9 @@ void computeAndWriteSegmentationAndDistanceDistribution(int* ks, int kCount) {
 	for (int i_user=0; i_user<userCount; i_user++) {
 		int user = users[i_user];
 
-		string path_string = "human-labels/human/color/" + to_string(user) + "/";
+		std::string path_string = "human-labels/" + std::to_string(user) + "/";
 		const char* path = path_string.c_str();
-	    vector<string> segmentation_file_names = getFileNames(path);
+	    std::vector<std::string> segmentation_file_names = getFileNames(path);
 
 		int segmentation_file_count = segmentation_file_names.size();
 		int segmentation_file_index = 1;
@@ -137,19 +139,20 @@ void computeAndWriteSegmentationAndDistanceDistribution(int* ks, int kCount) {
 				int height = img.rows;
 				int size = width * height;
 				int* labels = new int[size];
+				MetricsLibrary metrics = MetricsLibrary(height, width);
 
 				waterpixels.DoSuperpixelSegmentation_ForGivenNumberOfSuperpixels(img, width, height, labels, numlabels, k);
 
 				// Save segmentation
 				waterpixels.DrawContoursAroundSegments(result, labels);
-				imwrite("results/segmentation/" + file_name.substr(0, file_name.size() - 4) + "_seg" + to_string(k) + ".png", result);
+				imwrite("results/segmentation/" + file_name.substr(0, file_name.size() - 4) + "_seg" + std::to_string(k) + ".png", result);
 
 				// Save ground truth
 				Mat ground_truth = imread("images/" + file_name.substr(0, file_name.size() - 4) + ".jpg", IMREAD_COLOR);
-				string path_and_name = path + file_name;
+				std::string path_and_name = path + file_name;
 				int* ground_truth_labels = getGroundTruthLabels(size, width, path_and_name);
 				waterpixels.DrawContoursAroundSegments(ground_truth, ground_truth_labels);
-				imwrite("results/" + to_string(user) + "/" + file_name.substr(0, file_name.size() - 4) + "_gt.png", ground_truth);
+				imwrite("results/" + std::to_string(user) + "/" + file_name.substr(0, file_name.size() - 4) + "_gt.png", ground_truth);
 
 				// Mat groundTruthAndSegmentation = Mat(result);
 				// waterpixels.DrawContoursAroundSegments(groundTruthAndSegmentation, ground_truth_labels, Vec3b(0xff,0x00,0x00));
@@ -159,11 +162,11 @@ void computeAndWriteSegmentationAndDistanceDistribution(int* ks, int kCount) {
 				// fs::create_directories("results/" + to_string(user) + "/");
 
 				// Save distance distribution
-				unordered_map<int, int> distanceDistribution = waterpixels.getDistanceDistributionOfGroundTruthToSegmentation(labels, ground_truth_labels);
-				string fileNameToSaveMap = "results/" + to_string(user) + "/" + file_name.substr(0, file_name.size() - 4) + "_dist" + to_string(k) + ".txt";
+				std::unordered_map<int, int> distanceDistribution = metrics.getDistanceDistributionOfGroundTruthToSegmentation(labels, ground_truth_labels);
+				std::string fileNameToSaveMap = "results/" + std::to_string(user) + "/" + file_name.substr(0, file_name.size() - 4) + "_dist" + std::to_string(k) + ".txt";
 				writeUnorderedMapToFile(distanceDistribution, fileNameToSaveMap);
 			}
-			std::cout << "(" << (i_user + 1) << "/" << userCount << ") User. " << "(" << segmentation_file_index++ << "/" << segmentation_file_count << ") Segmentation files done. " << "results/" + to_string(user) + "/" + file_name.substr(0, file_name.size() - 4) << std::endl;
+			std::cout << "(" << (i_user + 1) << "/" << userCount << ") User. " << "(" << segmentation_file_index++ << "/" << segmentation_file_count << ") Segmentation files done. " << "results/" + std::to_string(user) + "/" + file_name.substr(0, file_name.size() - 4) << std::endl;
 		}
 	}
 }

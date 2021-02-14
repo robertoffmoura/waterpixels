@@ -4,14 +4,8 @@
 #include <fstream>
 #include "waterpixels.h"
 
-
-
-// testing:
-// #include <opencv2/opencv.hpp>
 using namespace cv;
 
-
-typedef pair<double, int> pdi;
 const int dx8[8] = {-1, -1,  0,  1, 1, 1, 0, -1};
 const int dy8[8] = { 0, -1, -1, -1, 0, 1, 1,  1};
 //////////////////////////////////////////////////////////////////////
@@ -31,12 +25,9 @@ void Waterpixels::DrawContoursAroundSegments(Mat& 			img,
 									  int*&					labels,
 									  // const unsigned int&	color) {
 									  Vec3b color) {
-	const int dx8[8] = {-1, -1,  0,  1, 1, 1, 0, -1};
-	const int dy8[8] = { 0, -1, -1, -1, 0, 1, 1,  1};
-
-	vector<bool> istaken(size, false);
-	vector<int> contourx(size);
-	vector<int> contoury(size);
+	std::vector<bool> istaken(size, false);
+	std::vector<int> contourx(size);
+	std::vector<int> contoury(size);
 	int mainindex = 0;
 	int cind = 0;
 	for (int j = 0; j < height; j++) {
@@ -82,236 +73,6 @@ void Waterpixels::DrawContoursAroundSegments(Mat& 			img,
 			}
 		}
 	}
-}
-
-bool Waterpixels::valid(int i, int j) {
-	return (0<=i && i<height) && (0<=j && j<width);
-}
-
-int Waterpixels::getDistanceToLabel(int p, vector<bool> isContour) {
-	std::priority_queue<pi, vector<pi>, greater<pi> > priorityQueue;
-	priorityQueue.push(std::make_pair(0.0, p));
-	unordered_set<int> seen;
-	seen.insert(p);
-
-	while (!priorityQueue.empty()) {
-		pi top = priorityQueue.top();
-		priorityQueue.pop();
-		double d = top.first;
-		int s = top.second;
-		if (isContour[s]) {
-			return d;
-		}
-
-		int numneighbors = 0;
-		int* neighbors = new int[4];
-		get4Neighbors(s, numneighbors, neighbors);
-		for (int j=0; j<numneighbors; j++) {
-			int n = neighbors[j];
-			if (seen.find(n) != seen.end()) continue;
-			priorityQueue.push(std::make_pair(std::abs(n/width - p/width) + std::abs(n%width - p%width), n));
-			// priorityQueue.push(std::make_pair(std::sqrt((pow(n/width - p/width,2) + pow(n%width - p%width,2))), n));
-			seen.insert(n);
-		}
-	}
-	return INT_MAX;
-}
-
-bool Waterpixels::belongsToBorder(int mainindex, int i, int j, int*& labels) {
-	int np = 0;
-	for (int k = 0; k < 8; k++) {
-		int x = j + dx8[k];
-		int y = i + dy8[k];
-		if (!valid(y, x)) continue;
-
-		int index = y*width + x;
-		if (labels[mainindex] != labels[index]) np++;
-	}
-	return np > 1;
-}
-
-unordered_map<int, int> Waterpixels::getDistanceDistributionOfGroundTruthToSegmentation(
-									  int*&	labels, int*& ground_truth_labels) {
-	unordered_map<int, int> result;
-
-	vector<bool> isContour(size, false);
-	int mainindex = 0;
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			if (belongsToBorder(mainindex, i, j, labels)) isContour[mainindex] = true;
-			mainindex++;
-		}
-	}
-
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			if (belongsToBorder(mainindex, i, j, ground_truth_labels)) {
-				int dist = getDistanceToLabel(mainindex, isContour);
-				result[dist] += 1;
-				// result[to_string(dist)] += 1;
-			}
-			mainindex++;
-		}
-	}
-
-	return result;
-}
-
-double Waterpixels::GetContourDensity(int*& labels) {
-	int count = 0;
-	int mainindex = 0;
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			if (belongsToBorder(mainindex, i, j, labels)) count++;
-			mainindex++;
-		}
-	}
-	return count / (double) size;
-}
-
-// Gets the center of mass of |superpixel|.
-pi getCenter(unordered_set<pi, pair_hash> superpixel) {
-	double i_sum, j_sum;
-	for (auto p : superpixel) {
-		i_sum += p.first;
-		j_sum += p.second;
-	}
-	double total = superpixel.size();
-	return std::make_pair(round(i_sum/total), round(j_sum/total));
-}
-
-// Centers all entries of |superpixel| on the pixel |c|.
-void center(unordered_set<pi, pair_hash>& superpixel, pi c) {
-	for (auto p : superpixel) {
-		p.first -= c.first;
-		p.second -= c.second;
-	}
-}
-
-// int getAreaFromThreshold(unordered_map<pi, int, pair_hash>& sum_superpixel, int threshold) {
-// 	int result = 0;
-// 	for (auto p : sum_superpixel) {
-// 		pi pixel = p.first;
-// 		if (sum_superpixel[pixel] >= threshold) result++;
-// 	}
-// 	return result;
-// }
-//
-// int getMaximalThresholdWithArea(unordered_map<pi, int, pair_hash>& sum_superpixel, int area) {
-// 	// To do: implement binary search
-// 	int t = 0;
-// 	while (getAreaFromThreshold(sum_superpixel, t) >= area) t++;
-// 	return t-1;
-// }
-
-// Returns maximum value of a hashmap.
-int getMax(unordered_map<pi, int, pair_hash>& sum_superpixel) {
-	int result = 0;
-	for (auto p : sum_superpixel) {
-		result = std::max(result, p.second);
-	}
-	return result;
-}
-
-// Returns a sum_superpixel whose components are greater than the threshold.
-unordered_map<pi, int, pair_hash> getSuperpixelFromThreshold(unordered_map<pi, int, pair_hash>& sum_superpixel, int threshold) {
-	unordered_map<pi, int, pair_hash> result;
-	for (auto p : sum_superpixel) {
-		pi pixel = p.first;
-		if (sum_superpixel[pixel] >= threshold) result[pixel] = p.second;
-	}
-	return result;
-}
-
-// Performs a binary search for the highest threshold whose corresponding superpixel area
-// is greater than the target.
-int binarySearch(unordered_map<pi, int, pair_hash>& sum_superpixel, int start, int end, int target) {
-	if (end <= start) {
-		return start -1;
-	}
-	int mid = (start + end)/2;
-	unordered_map<pi, int, pair_hash> mid_sum_superpixel = getSuperpixelFromThreshold(sum_superpixel, mid);
-	if (mid_sum_superpixel.size() < target) {
-		return binarySearch(sum_superpixel, start, mid-1, target);
-	} else { // mid_sum_superpixel.size() >= target
-		return binarySearch(mid_sum_superpixel, mid+1, end, target);
-	}
-}
-
-// Returns the maximum threshold which gives a superpixel whose area is larger than |area|.
-int getMaximalThresholdWithArea(unordered_map<pi, int, pair_hash>& sum_superpixel, int area) {
-	int end = getMax(sum_superpixel);
-	return binarySearch(sum_superpixel, 0, end, area);
-}
-
-// Returns the centered average shape of a superpixel, as a set of coordinates.
-unordered_set<pi, pair_hash> Waterpixels::averageSuperpixel(int*& labels, int numlabels) {
-	unordered_map<pi, int, pair_hash> sum_superpixel;
-	int sum_area = 0;
-	for (int l=0; l<numlabels; l++) {
-		// Create superpixel
-		unordered_set<pi, pair_hash> superpixel;
-		int currentIndex = 0;
-		for (int i=0; i<height; i++) {
-			for (int j=0; j<width; j++) {
-				if (labels[currentIndex] != l) continue;
-				superpixel.insert(std::make_pair(i,j));
-			}
-		}
-		// Center superpixel and add it to sum
-		pi c = getCenter(superpixel);
-		center(superpixel, c);
-		for (auto p : superpixel) {
-			sum_superpixel[p] += 1;
-		}
-		sum_area += superpixel.size();
-	}
-	// Create average superpixel and center it
-	double average_area = sum_area / numlabels;
-	int threshold = getMaximalThresholdWithArea(sum_superpixel, average_area);
-	unordered_set<pi, pair_hash> avg_superpixel;
-	for (auto p : sum_superpixel) {
-		pi pixel = p.first;
-		if (sum_superpixel[pixel] >= threshold) avg_superpixel.insert(pixel);
-	}
-	pi c = getCenter(avg_superpixel);
-	center(avg_superpixel, c);
-	return avg_superpixel;
-}
-
-// Returns the mismatch factor between two superpixels.
-double mismatchFactor(unordered_set<pi, pair_hash> superpixelA, unordered_set<pi, pair_hash> superpixelB) {
-	int intersectionAB = 0;
-	for (auto p : superpixelA) {
-		if (superpixelB.find(p) != superpixelB.end()) intersectionAB += 1;
-	}
-	int unionAB = superpixelA.size() + superpixelB.size() - intersectionAB;
-	return 1 - (intersectionAB / (double) unionAB);
-}
-
-double Waterpixels::GetAverageMismatchFactor(int*& labels, int numlabels) {
-	unordered_set<pi, pair_hash> avg_superpixel = averageSuperpixel(labels, numlabels);
-	double factor_sum = 0;
-	for (int l=0; l<numlabels; l++) {
-		// Create superpixel
-		unordered_set<pi, pair_hash> superpixel;
-		int currentIndex = 0;
-		for (int i=0; i<height; i++) {
-			for (int j=0; j<width; j++) {
-				if (labels[currentIndex] != l) continue;
-				superpixel.insert(std::make_pair(i,j));
-			}
-		}
-		// Center superpixel
-		pi c = getCenter(superpixel);
-		for (auto p : superpixel) {
-			p.first -= c.first;
-			p.second -= c.second;
-		}
-		// Compute mismatch factor and add it to sum
-		factor_sum += mismatchFactor(superpixel, avg_superpixel);
-	}
-	return factor_sum / numlabels;
 }
 
 void Waterpixels::get4Neighbors(int s, int& numneighbors, int* neighbors) {
@@ -418,9 +179,8 @@ void displayGrayImage(int* a) {
 	displayImage(a, a, a);
 }
 
-// typedef tuple<int, int, int> ti;
 void Waterpixels::watershed(double* regularizedGradient, int* labels, int numlabels, int* markers, int markerSize) {
-    std::priority_queue<pi, vector<pi>, greater<pi> > priorityQueue;
+    std::priority_queue<pi, std::vector<pi>, std::greater<pi> > priorityQueue;
 	for (int i=0; i<markerSize; i++) priorityQueue.push(std::make_pair(regularizedGradient[markers[i]], markers[i]));
 
 	while (!priorityQueue.empty()) {
