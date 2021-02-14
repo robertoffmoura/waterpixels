@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.15)
+project(waterpixels)
+
+set(CMAKE_CXX_STANDARD 17)
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
+add_executable(waterpixels_metrics metrics.cpp waterpixels.cpp)
+add_executable(waterpixels_example example.cpp waterpixels.cpp)
+target_link_libraries(waterpixels_metrics ${OpenCV_LIBS})
+target_link_libraries(waterpixels_example ${OpenCV_LIBS})

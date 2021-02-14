@@ -1,0 +1,8 @@
+*.jpg
+*.png
+*.csv
+*.tgz
+*.seg
+CMakeFiles
+results/
+build/
