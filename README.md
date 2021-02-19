@@ -52,3 +52,11 @@ To get the contour density and average mismatch factor of the resulting segmenta
 ./build/waterpixels_metrics regularity
 ```
 This will save these metrics under `results/measures`, in a `.csv` format.
+
+### Duration of Execution Metrics
+
+To get the time it takes to compute the segmentations of the entire dataset, run:
+```
+./build/waterpixels_metrics time
+```
+The result will be saved at `results/measures/time.csv`

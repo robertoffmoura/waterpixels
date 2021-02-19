@@ -7,6 +7,7 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 #include <dirent.h>
+#include <chrono>
 
 using namespace cv;
 
@@ -171,18 +172,66 @@ void computeAndWriteSegmentationAndDistanceDistribution(int* ks, int kCount) {
 	}
 }
 
+void computeAndWriteTimeMeasures(int* ks, int kCount) {
+	std::string path_string = "images/";
+	const char* path = path_string.c_str();
+	std::vector<std::string> image_file_names = getFileNames(path);
+	std::cout << "Computing time measure and writing the results to results/measures/time.csv" << std::endl;
+	int file_count = image_file_names.size();
+	// Write the header of times.csv
+	std::string measuresFileName = "results/measures/time.csv";
+	std::string header = "k,duration";
+	writeStringToFile(header, measuresFileName);
+	for (int i_k=0; i_k<kCount; i_k++) {
+		int file_index = 1;
+		int k = ks[i_k];
+		auto startTime = std::chrono::high_resolution_clock::now();
+		for (auto file_name : image_file_names) {
+			Mat img = imread("images/" + file_name, IMREAD_COLOR);
+
+			Waterpixels waterpixels = Waterpixels();
+			int numlabels;
+			int width = img.cols;
+			int height = img.rows;
+			int size = width * height;
+			int* labels = new int[size];
+
+			waterpixels.DoSuperpixelSegmentation_ForGivenNumberOfSuperpixels(img, width, height, labels, numlabels, k);
+
+			std::cout << "(" << (i_k+1) << "/" << kCount << ") k values. (" << file_index++ << "/" << file_count << ") images done. " << std::endl;
+		}
+		auto endTime = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+
+		std::string timeLine = std::to_string(k) + ", " + std::to_string(duration);
+		appendStringToFile(timeLine, measuresFileName);
+	}
+	std::cout << "Time measures saved to results/measures/time.csv" << std::endl;
+}
+
+bool isValidMeasure(char* measure) {
+	std::unordered_set<const char*> validMeasures = {"adherence", "regularity", "time"};
+	for (const auto& validMeasure : validMeasures) {
+		if (strcmp(measure, validMeasure) == 0) return true;
+	}
+	return false;
+	// return strcmp(measure, "adherence") != 0 && strcmp(measure, "regularity") != 0)
+}
+
 int main(int argc, char **argv) {
-	if (argc != 2 || (strcmp(argv[1], "adherence") != 0 && strcmp(argv[1], "regularity") != 0)) {
+	if (argc != 2 || !isValidMeasure(argv[1])) {
 		std::cout << "Usage: ./waterpixels_metrics <metrics>" << std::endl;
-		std::cout << "<metrics> can be either \"adherence\" or \"regularity\"." << std::endl;
+		std::cout << "<metrics> can be either \"adherence\" or \"regularity\" or \"time\"." << std::endl;
 		return -1;
 	}
-	int ks[] = {50, 100, 200};
-	int kCount = 3;
+	int ks[] = {50, 100, 150, 200};
+	int kCount = 4;
 
 	if (strcmp(argv[1], "adherence") == 0) {
 		computeAndWriteSegmentationAndDistanceDistribution(ks, kCount);
 	} else if (strcmp(argv[1], "regularity") == 0) {
 		computeAndWriteRegularityMeasures(ks, kCount);
+	} else if (strcmp(argv[1], "time") == 0) {
+		computeAndWriteTimeMeasures(ks, kCount);
 	}
 }
