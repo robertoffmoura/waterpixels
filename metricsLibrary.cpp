@@ -1,5 +1,6 @@
 #include "metricsLibrary.h"
 #include <queue>
+#include <climits>
 
 const int dx8[8] = {-1, -1,  0,  1, 1, 1, 0, -1};
 const int dy8[8] = { 0, -1, -1, -1, 0, 1, 1,  1};
@@ -12,7 +13,7 @@ pi getCenter(std::unordered_set<pi, pair_hash> superpixel) {
 		j_sum += p.second;
 	}
 	double total = superpixel.size();
-	return std::make_pair(round(i_sum/total), round(j_sum/total));
+	return std::make_pair(std::round(i_sum/total), std::round(j_sum/total));
 }
 
 // Centers all entries of |superpixel| on the pixel |c|.
